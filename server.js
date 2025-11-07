@@ -5,7 +5,8 @@ const app = express();
 const port = process.env.PORT || 8080;
 
 const ALLOWED_SERIAL_NUMBERS = [
-    'RFCT910CYRE',       
+    'RFCT910CYRE',
+    'RFCXA1613EY',
     'YOUR_DEVICE_SERIAL_HERE' 
 ];
 
@@ -69,4 +70,5 @@ app.listen(port, () => {
     console.log('등록된 시리얼 번호 목록:');
     console.log(ALLOWED_SERIAL_NUMBERS);
 });
+
 
