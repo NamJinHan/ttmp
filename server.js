@@ -1,23 +1,20 @@
 const express = require('express');
-const sgMail = require('@sendgrid/mail'); // [수정] SendGrid 모듈 사용
+const sgMail = require('@sendgrid/mail'); 
 const app = express();
 
 const port = process.env.PORT || 8080;
 
-// [중요] 여기에 등록된 '기기 시리얼 번호' 목록을 추가하세요.
 const ALLOWED_SERIAL_NUMBERS = [
     'RFCT910CYRE',           
     'EMULATOR30X1X12',       
     'YOUR_DEVICE_SERIAL_HERE' 
 ];
 
-// --- [수정] SendGrid API 키 설정 ---
-// (Cloud Run 환경변수에서 API 키를 가져옵니다)
 sgMail.setApiKey(process.env.SENDGRID_API_KEY); 
 
-// --- 기존 라이선스 체크 로직 ---
 app.get('/check-license', (req, res) => {
-    const serial = req.query.serial;
+    // [수정] req.query.serial을 받은 즉시 .trim()으로 공백/줄바꿈을 제거합니다.
+    const serial = req.query.serial ? req.query.serial.trim() : null;
 
     if (!serial) {
         console.warn('시리얼(serial)이 없는 요청이 들어왔습니다.');
@@ -35,20 +32,17 @@ app.get('/check-license', (req, res) => {
     res.json({ authorized: isAuthorized });
 });
 
-
-// --- [수정] 인증 실패 시 SendGrid로 이메일 발송 ---
 app.get('/report-denial', (req, res) => {
-    const serial = req.query.serial;
+    // [수정] 리포트할 때도 .trim()을 적용합니다.
+    const serial = req.query.serial ? req.query.serial.trim() : null;
 
     if (!serial) {
         return res.status(400).json({ error: 'serial is required' });
     }
 
-    // [중요] SendGrid는 'from' 이메일 주소가
-    // 가입 시 인증된 본인 이메일이어야 합니다.
     const msg = {
-        to: 'jeasukyu@gmail.com', // 받는 사람
-        from: 'ssaulabi75@gmail.com', // 👈 SendGrid에 가입/인증한 이메일
+        to: 'ssaulabi75@gmail.com', 
+        from: 'YOUR_VERIFIED_EMAIL@example.com', // 👈 SendGrid에 인증한 이메일
         subject: `[tmAutoCall] 미승인 기기 접속 시도`,
         html: `
             <h3>미승인 기기의 접속이 감지되었습니다.</h3>
@@ -59,7 +53,6 @@ app.get('/report-denial', (req, res) => {
         `
     };
 
-    // 이메일 발송
     sgMail
         .send(msg)
         .then(() => {
@@ -71,11 +64,9 @@ app.get('/report-denial', (req, res) => {
             res.status(500).json({ success: false, error: error.message });
         });
 });
-// ----------------------------------------------------
 
 app.listen(port, () => {
     console.log(`라이선스 서버가 포트 ${port} 에서 실행 중입니다.`);
     console.log('등록된 시리얼 번호 목록:');
     console.log(ALLOWED_SERIAL_NUMBERS);
 });
-
