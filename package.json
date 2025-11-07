@@ -8,6 +8,6 @@
   },
   "dependencies": {
     "express": "^4.19.2",
-    "nodemailer": "^6.9.14" 
+    "@sendgrid/mail": "^8.1.3" 
   }
 }
