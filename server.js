@@ -6,7 +6,7 @@ const port = process.env.PORT || 8080;
 
 // [중요] 여기에 등록된 '기기 시리얼 번호' 목록을 추가하세요.
 const ALLOWED_SERIAL_NUMBERS = [
-    'R5CR81QXXXX',           
+    'RFCT910CYRE',           
     'EMULATOR30X1X12',       
     'YOUR_DEVICE_SERIAL_HERE' 
 ];
@@ -78,3 +78,4 @@ app.listen(port, () => {
     console.log('등록된 시리얼 번호 목록:');
     console.log(ALLOWED_SERIAL_NUMBERS);
 });
+
