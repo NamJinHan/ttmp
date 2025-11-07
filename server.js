@@ -1,5 +1,5 @@
 const express = require('express');
-const nodemailer = require('nodemailer'); // [추가]
+const sgMail = require('@sendgrid/mail'); // [수정] SendGrid 모듈 사용
 const app = express();
 
 const port = process.env.PORT || 8080;
@@ -11,21 +11,9 @@ const ALLOWED_SERIAL_NUMBERS = [
     'YOUR_DEVICE_SERIAL_HERE' 
 ];
 
-// --- [추가] 이메일 발송기 설정 ---
-// Gmail을 사용하며, '앱 비밀번호'를 사용해야 합니다.
-// (GMAIL_USER와 GMAIL_APP_PASSWORD는 Cloud Run 환경변수에서 가져옵니다)
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // true for 465, false for other ports
-    auth: {
-        user: process.env.GMAIL_USER,       // 👈 GMAIL_USER 환경 변수
-        pass: process.env.GMAIL_APP_PASSWORD, // 👈 GMAIL_APP_PASSWORD 환경 변수
-    },
-});
-// ---------------------------------
-
+// --- [수정] SendGrid API 키 설정 ---
+// (Cloud Run 환경변수에서 API 키를 가져옵니다)
+sgMail.setApiKey(process.env.SENDGRID_API_KEY); 
 
 // --- 기존 라이선스 체크 로직 ---
 app.get('/check-license', (req, res) => {
@@ -48,7 +36,7 @@ app.get('/check-license', (req, res) => {
 });
 
 
-// --- [추가] 인증 실패 시 이메일 발송 엔드포인트 ---
+// --- [수정] 인증 실패 시 SendGrid로 이메일 발송 ---
 app.get('/report-denial', (req, res) => {
     const serial = req.query.serial;
 
@@ -56,10 +44,12 @@ app.get('/report-denial', (req, res) => {
         return res.status(400).json({ error: 'serial is required' });
     }
 
-    const mailOptions = {
-        from: `"tmAutoCall 알림" <${process.env.GMAIL_USER}>`, // 보내는 사람
-        to: 'jeasukyu@gmail.com',                      // 받는 사람 (요청하신 이메일)
-        subject: `[tmAutoCall] 미승인 기기 접속 시도`,       // 제목
+    // [중요] SendGrid는 'from' 이메일 주소가
+    // 가입 시 인증된 본인 이메일이어야 합니다.
+    const msg = {
+        to: 'jeasukyu@gmail.com', // 받는 사람
+        from: 'ssaulabi75@gmail.com', // 👈 SendGrid에 가입/인증한 이메일
+        subject: `[tmAutoCall] 미승인 기기 접속 시도`,
         html: `
             <h3>미승인 기기의 접속이 감지되었습니다.</h3>
             <p>라이선스 서버에 등록되지 않은 기기가 프로그램을 실행했습니다.</p>
@@ -70,14 +60,16 @@ app.get('/report-denial', (req, res) => {
     };
 
     // 이메일 발송
-    transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-            console.error('이메일 발송 실패:', error);
-            return res.status(500).json({ success: false, error: error.message });
-        }
-        console.log('이메일 발송 성공 (미승인 기기 리포트):', info.response);
-        res.json({ success: true });
-    });
+    sgMail
+        .send(msg)
+        .then(() => {
+            console.log('이메일 발송 성공 (SendGrid 리포트)');
+            res.json({ success: true });
+        })
+        .catch((error) => {
+            console.error('SendGrid 이메일 발송 실패:', error.response.body.errors);
+            res.status(500).json({ success: false, error: error.message });
+        });
 });
 // ----------------------------------------------------
 
